@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <script async src="https://js-cdn.music.apple.com/musickit/v3/musickit.js"></script>
+
+  <script type="module">
+    document.addEventListener("musickitloaded", async function () {
+      const jose = await import("https://unpkg.com/jose/dist/browser");
+      const signInButton = document.getElementById("sign-in-button");
+
+      signInButton.disabled = false
+
+
+      signInButton.onclick = async () => {
+        const now = Date.now() / 1000;
+        const sixMonthsFromNow = now + 15777000;
+
+        const tid = document.getElementById("tid").value;
+        const kid = document.getElementById("kid").value;
+        const pem = document.getElementById("pem").value;
+        const secret = new TextEncoder().encode(pem);
+        //const key = await crypto.subtle.importKey("raw", secret, {name: "AES-GCM"}, false, ["sign"])
+        const key = await jose.importPKCS8(pem, "ES256")
+
+        const developerToken = await new jose.SignJWT()
+          .setProtectedHeader({alg: "ES256", kid})
+          .setIssuedAt()
+          .setIssuer(tid)
+          .setExpirationTime(sixMonthsFromNow)
+          .sign(key)
+
+        MusicKit.configure({
+          developerToken,
+          app: {
+            name: "apple-music-token-helper",
+            build: "0.0.1",
+          },
+        }).then(() => {
+
+          MusicKit.getInstance()
+            .authorize()
+            .then(async (token) => {
+              console.log("Music User Token: ", token)
+            })
+            .catch(console.error);
+        }).catch(console.error)
+      };
+
+    });
+  </script>
+  <title>get-apple-music-token</title>
+</head>
+
+<body>
+  <h1>Get Apple Music Token</h1>
+  <h2>None of this information is stored or sent anywhere except for Apple</h2>
+  <input id="tid" type="password" placeholder="Enter your Apple Team id" /></br></br>
+  <input id="kid" type="password" placeholder="Enter your Apple Key id" /></br></br>
+  <input id="pem" type="password" placeholder="Enter your private key" /></br></br>
+  <!--<input id="developer_token" type="password" placeholder="Enter your developer token" />-->
+  <h2>Please click below to authenticate with Apple Music</h2>
+  <button id="sign-in-button" disabled>Get Music Token</button>
+</body>
+
+</html>
